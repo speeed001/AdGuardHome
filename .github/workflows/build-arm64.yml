@@ -1,4 +1,4 @@
-name: Build AdGuardHome ARM64
+name: Build AdGuardHome MT7986 (ARM64 Static)
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install build dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y make nodejs npm
@@ -25,25 +25,30 @@ jobs:
         run: |
           npm install
 
-      - name: Build AdGuardHome (Linux ARM64)
+      - name: Build (Static ARM64 for MT7986)
         run: |
           make clean
-          GOOS=linux GOARCH=arm64 make build
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 make build
 
       - name: Strip binary (reduce size)
         run: |
           strip AdGuardHome/AdGuardHome || true
 
-      - name: Package
+      - name: Create package
         run: |
           mkdir release
           cp AdGuardHome/AdGuardHome release/
           cp -r AdGuardHome/clients release/
-          cp -r AdGuardHome/dhcp release/ || true
-          tar -czvf AdGuardHome_linux_arm64.tar.gz -C release .
+          tar -czvf AdGuardHome_linux_arm64_mt7986.tar.gz -C release .
+
+      - name: Generate SHA256
+        run: |
+          sha256sum AdGuardHome_linux_arm64_mt7986.tar.gz > SHA256SUMS.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AdGuardHome_linux_arm64
-          path: AdGuardHome_linux_arm64.tar.gz
+          name: AdGuardHome_linux_arm64_mt7986
+          path: |
+            AdGuardHome_linux_arm64_mt7986.tar.gz
+            SHA256SUMS.txt
