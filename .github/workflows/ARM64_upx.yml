@@ -1,0 +1,57 @@
+name: Build AdGuard Home (ARM64 with UPX)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 确保获取 Git Tag 用于生成版本号
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Build Official Binary
+        run: |
+          # 1. 安装前端依赖
+          npm --prefix client ci
+          
+          # 2. 官方标准编译
+          # RELEASE=1 注入版本号并移除调试符号
+          # CGO_ENABLED=0 确保静态链接（路由器运行的关键）
+          CGO_ENABLED=0 make GOOS='linux' GOARCH='arm64' RELEASE=1
+
+      - name: Install & Run UPX
+        run: |
+          # 安装 UPX 工具
+          sudo apt-get update && sudo apt-get install -y upx
+          
+          # 使用 LZMA 算法进行极限压缩
+          upx --lzma AdGuardHome
+          
+          # 在日志中显示压缩后的文件大小
+          echo "压缩后文件大小详情:"
+          ls -lh AdGuardHome
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdGuardHome-linux-arm64-compressed
+          path: AdGuardHome
+          retention-days: 7
