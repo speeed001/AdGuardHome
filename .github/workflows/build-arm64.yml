@@ -1,17 +1,16 @@
-name: Build AdGuard Home (ARM64)
+name: Build AdGuard Home (Official Method)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 jobs:
-  build-arm64:
+  build:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 必须设置为 0，否则 make 拿不到 git 标签，版本号会显示 undefined
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -22,38 +21,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # 强制指定 v20 保证编译稳定
+          node-version: 'latest'
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
 
-      # 1. 手动构建前端（绕过 Makefile）
-      - name: Build Frontend Assets
+      - name: Build
         run: |
-          cd client
-          npm ci
-          # AdGuard Home 的前端生产环境构建脚本通常叫 build-prod 或 build
-          # 我们先试 build-prod，如果报错再改回 build
-          npm run build-prod || npm run build
-          cd ..
+          # 安装前端依赖
+          npm --prefix client ci
+          
+          # 使用官方 Makefile 编译
+          # 这样会自动运行构建前端、go generate 和注入版本号
+          make RELEASE=1 GOOS=linux GOARCH=arm64 VERBOSE=1
 
-      # 2. 安装并运行资源打包工具
-      # AdGuard Home 需要将 client/build 下的文件“打包”进 Go 源码
-      - name: Go Generate
-        run: |
-          go generate ./internal/home
-
-      # 3. 编译二进制
-      - name: Build Binary for ARM64
-        env:
-          GOOS: linux
-          GOARCH: arm64
-          CGO_ENABLED: 0
-        run: |
-          # 添加版本信息（如果不加，Web 界面可能显示 "undefined"）
-          go build -v -ldflags="-s -w" -o AdGuardHome_linux_arm64 .
+      - name: Check Version
+        run: ./AdGuardHome --version
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: AdGuardHome-linux-arm64
-          path: AdGuardHome_linux_arm64
+          path: AdGuardHome
