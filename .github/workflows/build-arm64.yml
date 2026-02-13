@@ -13,48 +13,44 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. 自动根据 go.mod 选择版本
+      # 1. 自动根据项目文件设置环境
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
 
-      # 2. 自动根据项目环境安装 Node
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'latest' 
+          node-version: 'latest'
           cache: 'npm'
-          # 指向前端代码所在的目录进行缓存计算
           cache-dependency-path: client/package-lock.json
 
-      # 3. 关键修正：手动构建前端
-      # AdGuard Home 的前端源代码在 client 目录下
+      # 2. 核心修正：使用官方 Makefile 里的前端构建目标
+      # AdGuard Home 的 Makefile 实际上在根目录，它会处理 client 目录
       - name: Build Frontend Assets
         run: |
-          cd client
-          npm ci        # 安装依赖
-          npm run build # 编译前端静态资源
-          cd ..
+          # 先安装前端依赖
+          npm --prefix client ci
+          # 运行官方的发布版前端构建逻辑
+          make build-frontend
 
-      # 4. 准备 Go 资源 (将前端打包进 Go 代码)
-      # 官方通常使用这个命令来处理静态资源映射
-      - name: Prepare Assets
-        run: |
-          go generate ./internal/home
+      # 3. 准备 Go 静态资源嵌入
+      - name: Go Generate
+        run: go generate ./internal/home
 
-      # 5. 编译 ARM64 二进制文件
-      - name: Build Binary for Linux ARM64
+      # 4. 编译 Linux ARM64 二进制文件
+      - name: Build Binary for ARM64
         env:
           GOOS: linux
           GOARCH: arm64
           CGO_ENABLED: 0
         run: |
-          # 使用静态链接，并优化体积
+          # 加上版本号信息（可选，方便在 Web 界面查看版本）
           go build -v -ldflags="-s -w" -o AdGuardHome_linux_arm64 .
 
-      - name: Upload ARM64 Binary
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: AdGuardHome-linux-arm64
