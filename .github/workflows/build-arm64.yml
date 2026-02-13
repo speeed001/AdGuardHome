@@ -17,20 +17,17 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y make nodejs npm
-
-      - name: Install frontend dependencies
-        run: npm install
 
       - name: Build (Static ARM64 for MT7986 / OpenWRT)
         run: |
           make clean
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 make build
 
-      - name: Strip binary (reduce size)
+      - name: Strip binary
         run: strip AdGuardHome/AdGuardHome || true
 
       - name: Package
