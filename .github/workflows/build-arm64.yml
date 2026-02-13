@@ -11,10 +11,11 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup Go
+      - name: Setup Go (auto from go.mod)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version-file: go.mod
+          cache: true
 
       - name: Install dependencies
         run: |
@@ -22,19 +23,17 @@ jobs:
           sudo apt-get install -y make nodejs npm
 
       - name: Install frontend dependencies
-        run: |
-          npm install
+        run: npm install
 
-      - name: Build (Static ARM64 for MT7986)
+      - name: Build (Static ARM64 for MT7986 / OpenWRT)
         run: |
           make clean
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 make build
 
       - name: Strip binary (reduce size)
-        run: |
-          strip AdGuardHome/AdGuardHome || true
+        run: strip AdGuardHome/AdGuardHome || true
 
-      - name: Create package
+      - name: Package
         run: |
           mkdir release
           cp AdGuardHome/AdGuardHome release/
@@ -42,8 +41,7 @@ jobs:
           tar -czvf AdGuardHome_linux_arm64_mt7986.tar.gz -C release .
 
       - name: Generate SHA256
-        run: |
-          sha256sum AdGuardHome_linux_arm64_mt7986.tar.gz > SHA256SUMS.txt
+        run: sha256sum AdGuardHome_linux_arm64_mt7986.tar.gz > SHA256SUMS.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
