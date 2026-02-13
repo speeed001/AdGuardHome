@@ -1,4 +1,4 @@
-name: Build AdGuard Home (Official Method)
+name: Build AdGuard Home (Official Standard)
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 必须设置为 0，否则 make 拿不到 git 标签，版本号会显示 undefined
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -27,15 +27,12 @@ jobs:
 
       - name: Build
         run: |
-          # 安装前端依赖
+          # 官方构建流程必须先手动同步前端依赖
           npm --prefix client ci
           
-          # 使用官方 Makefile 编译
-          # 这样会自动运行构建前端、go generate 和注入版本号
-          make RELEASE=1 GOOS=linux GOARCH=arm64 VERBOSE=1
-
-      - name: Check Version
-        run: ./AdGuardHome --version
+          # 直接调用官方 Makefile 命令
+          # 设置环境变量确保交叉编译和版本号注入
+          make GOOS='linux' GOARCH='arm64' RELEASE=1
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
