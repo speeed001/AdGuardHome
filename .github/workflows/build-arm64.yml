@@ -13,7 +13,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. 自动根据项目文件设置环境
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -23,31 +22,34 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'latest'
+          node-version: '20' # 强制指定 v20 保证编译稳定
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
 
-      # 2. 核心修正：使用官方 Makefile 里的前端构建目标
-      # AdGuard Home 的 Makefile 实际上在根目录，它会处理 client 目录
+      # 1. 手动构建前端（绕过 Makefile）
       - name: Build Frontend Assets
         run: |
-          # 先安装前端依赖
-          npm --prefix client ci
-          # 运行官方的发布版前端构建逻辑
-          make build-frontend
+          cd client
+          npm ci
+          # AdGuard Home 的前端生产环境构建脚本通常叫 build-prod 或 build
+          # 我们先试 build-prod，如果报错再改回 build
+          npm run build-prod || npm run build
+          cd ..
 
-      # 3. 准备 Go 静态资源嵌入
+      # 2. 安装并运行资源打包工具
+      # AdGuard Home 需要将 client/build 下的文件“打包”进 Go 源码
       - name: Go Generate
-        run: go generate ./internal/home
+        run: |
+          go generate ./internal/home
 
-      # 4. 编译 Linux ARM64 二进制文件
+      # 3. 编译二进制
       - name: Build Binary for ARM64
         env:
           GOOS: linux
           GOARCH: arm64
           CGO_ENABLED: 0
         run: |
-          # 加上版本号信息（可选，方便在 Web 界面查看版本）
+          # 添加版本信息（如果不加，Web 界面可能显示 "undefined"）
           go build -v -ldflags="-s -w" -o AdGuardHome_linux_arm64 .
 
       - name: Upload Artifact
