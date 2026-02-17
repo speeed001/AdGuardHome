@@ -37,17 +37,12 @@ jobs:
           # CGO_ENABLED=0 确保静态链接（路由器运行的关键）
           CGO_ENABLED=0 make GOOS='linux' GOARCH='arm64' RELEASE=1
 
-      - name: Install & Run UPX
-        run: |
-          # 安装 UPX 工具
-          sudo apt-get update && sudo apt-get install -y upx
-          
-          # 使用 LZMA 算法进行极限压缩
-          upx --lzma AdGuardHome
-          
-          # 在日志中显示压缩后的文件大小
-          echo "压缩后文件大小详情:"
-          ls -lh AdGuardHome
+      - name: Compress with UPX
+        uses: svenstaro/upx-action@v2
+        with:
+          files: AdGuardHome
+          args: --lzma
+          strip: true # 进一步移除不必要的符号
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
