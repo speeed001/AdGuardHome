@@ -42,7 +42,7 @@ jobs:
         with:
           files: AdGuardHome
           args: --lzma
-          strip: true # 进一步移除不必要的符号
+          strip: false # 进一步移除不必要的符号
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
