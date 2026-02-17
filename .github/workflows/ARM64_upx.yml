@@ -35,6 +35,7 @@ jobs:
           # 2. 官方标准编译
           # RELEASE=1 注入版本号并移除调试符号
           # CGO_ENABLED=0 确保静态链接（路由器运行的关键）
+          export GOFLAGS="-ldflags=-s -w"
           CGO_ENABLED=0 make GOOS='linux' GOARCH='arm64' RELEASE=1
 
       - name: Compress with UPX
