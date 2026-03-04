@@ -1,4 +1,4 @@
-name: Build AdGuard Home (ARM64 with UPX)
+name: Build AdGuard Home (ARM64 with Latest UPX)
 
 on:
   workflow_dispatch:
@@ -8,11 +8,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 确保获取 Git Tag 用于生成版本号
+          fetch-depth: 0  # 确保获取 Git Tag 用于生成版本号
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -31,23 +32,42 @@ jobs:
         run: |
           # 1. 安装前端依赖
           npm --prefix client ci
-          
+
           # 2. 官方标准编译
           # RELEASE=1 注入版本号并移除调试符号
-          # CGO_ENABLED=0 确保静态链接（路由器运行的关键）
+          # CGO_ENABLED=0 确保静态链接（路由器运行关键）
           export GOFLAGS="-ldflags=-s -w"
           CGO_ENABLED=0 make GOOS='linux' GOARCH='arm64' RELEASE=1
 
-      - name: Compress with UPX
-        uses: svenstaro/upx-action@v2
-        with:
-          files: AdGuardHome
-          args: --lzma
-          strip: false # 进一步移除不必要的符号
+      - name: Install Latest UPX
+        run: |
+          set -e
+          echo "Fetching latest UPX version..."
+          
+          UPX_VERSION=$(curl -s https://api.github.com/repos/upx/upx/releases/latest | grep tag_name | cut -d '"' -f4)
+          echo "Latest UPX version: $UPX_VERSION"
+
+          FILE_NAME="upx-${UPX_VERSION#v}-amd64_linux.tar.xz"
+
+          wget https://github.com/upx/upx/releases/download/${UPX_VERSION}/${FILE_NAME}
+          tar -xf ${FILE_NAME}
+          sudo mv upx-${UPX_VERSION#v}-amd64_linux/upx /usr/local/bin/upx
+
+          upx --version
+
+      - name: Compress with Latest UPX
+        run: |
+          echo "Before compression:"
+          ls -lh AdGuardHome
+
+          upx --lzma AdGuardHome
+
+          echo "After compression:"
+          ls -lh AdGuardHome
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AdGuardHome-linux-arm64-compressed
+          name: AdGuardHome-linux-arm64-upx-latest
           path: AdGuardHome
           retention-days: 7
